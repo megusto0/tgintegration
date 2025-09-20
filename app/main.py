@@ -106,6 +106,7 @@ def _different(current: Any, new_value: Any) -> bool:
 async def update_treatment(
     init_data: str = Form(..., alias="initData"),
     treatment_id: str = Form(..., alias="id"),
+    cid: Optional[str] = Form(None, alias="cid"),
     event_type_raw: Optional[str] = Form(None, alias="eventType"),
     insulin_raw: Optional[str] = Form(None, alias="insulin"),
     carbs_raw: Optional[str] = Form(None, alias="carbs"),
@@ -117,6 +118,11 @@ async def update_treatment(
     verify_init_data(init_data)
 
     record = await nightscout.fetch_treatment_by_id(treatment_id)
+    if not record and cid:
+        record = await nightscout.fetch_treatment_by_client_id(cid)
+        if record and record.get("_id") != treatment_id:
+            # Nightscout returned another record; respect the id from form
+            record = None
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Treatment not found")
 

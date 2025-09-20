@@ -14,7 +14,10 @@ const photoUrlInput = document.getElementById("photo-url");
 const photoPreview = document.getElementById("photo-preview");
 const photoImg = document.getElementById("photo-img");
 const idInput = document.getElementById("treatment-id");
+const cidInput = document.getElementById("treatment-cid");
 const submitButton = form.querySelector("button[type=submit]");
+
+let currentCid = null;
 
 function setStatus(message, variant = "info") {
   statusEl.textContent = message || "";
@@ -39,6 +42,8 @@ async function loadTreatment() {
     submitButton.disabled = true;
     return;
   }
+  currentCid = cid;
+  cidInput.value = cid;
   if (!initData) {
     setStatus("initData недоступен", "error");
     submitButton.disabled = true;
@@ -115,6 +120,9 @@ form.addEventListener("submit", async (event) => {
   }
   const formData = new FormData(form);
   formData.append("initData", initData);
+  if (!formData.get("cid") && currentCid) {
+    formData.append("cid", currentCid);
+  }
   try {
     setStatus("Сохраняем...");
     submitButton.disabled = true;
