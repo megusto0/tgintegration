@@ -41,7 +41,7 @@ async def fetch_treatment_by_client_id(client_id: str) -> Optional[Dict[str, Any
 async def fetch_treatment_by_id(treatment_id: str) -> Optional[Dict[str, Any]]:
     settings = get_settings()
     auth = _auth_headers_params()
-    url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}.json"
+    url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}"
 
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         response = await client.get(url, params=auth["params"], headers=auth["headers"])
@@ -54,7 +54,7 @@ async def fetch_treatment_by_id(treatment_id: str) -> Optional[Dict[str, Any]]:
 async def update_treatment(treatment_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
     settings = get_settings()
     auth = _auth_headers_params()
-    url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}.json"
+    url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}"
 
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         response = await client.put(url, json=patch, params=auth["params"], headers=auth["headers"])
