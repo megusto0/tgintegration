@@ -41,14 +41,16 @@ async def fetch_treatment_by_client_id(client_id: str) -> Optional[Dict[str, Any
 async def fetch_treatment_by_id(treatment_id: str) -> Optional[Dict[str, Any]]:
     settings = get_settings()
     auth = _auth_headers_params()
-    url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}"
+    url = f"{settings.ns_url}/api/v1/treatments.json"
+    query = {"find[_id]": treatment_id, "count": 1, **auth["params"]}
 
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-        response = await client.get(url, params=auth["params"], headers=auth["headers"])
-        if response.status_code == 404:
-            return None
+        response = await client.get(url, params=query, headers=auth["headers"])
         response.raise_for_status()
-        return response.json()
+        payload = response.json()
+        if not payload:
+            return None
+        return payload[0]
 
 
 async def update_treatment(treatment_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
