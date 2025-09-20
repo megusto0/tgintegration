@@ -26,6 +26,7 @@ logging.basicConfig(level=logging.INFO)
 
 UTC = timezone.utc
 TELEGRAM_TIMEOUT = httpx.Timeout(35.0, read=35.0, connect=10.0)
+DAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
 
 def _format_amount(value: float, unit: str, *, precision: int = 0) -> str:
@@ -186,8 +187,27 @@ async def build_week_summary(reference_date: Optional[date] = None) -> str:
         return header + "\nНет записей на этой неделе."
 
     avg_divider = days_with_entries or 1
+
+    day_lines: List[str] = []
+    for offset in range(total_days):
+        current_day = week_start + timedelta(days=offset)
+        label = DAY_LABELS[offset % len(DAY_LABELS)]
+        stats = daily.get(current_day)
+        if not stats or stats["entries"] == 0:
+            day_lines.append(f"• {label} {current_day.strftime('%d.%m')} — нет записей")
+            continue
+        line = (
+            f"• {label} {current_day.strftime('%d.%m')}: {stats['entries']} запис., "
+            f"инсулин {_format_amount(stats['insulin'], 'ед', precision=1)}, "
+            f"углеводы {_format_amount(stats['carbs'], 'г')}, "
+            f"калории {_format_amount(stats['calories'], 'ккал')}"
+        )
+        day_lines.append(line)
+
     lines = [
         header,
+        *day_lines,
+        "",
         f"Дней с записями: {days_with_entries} из {total_days}",
         f"Записей: {totals['entries']}",
         "Итого:",
@@ -199,7 +219,7 @@ async def build_week_summary(reference_date: Optional[date] = None) -> str:
         f"• Углеводы: {_format_amount(totals['carbs'] / avg_divider, 'г')}",
         f"• Калории: {_format_amount(totals['calories'] / avg_divider, 'ккал')}",
     ]
-    return "\n".join(lines)
+    return "\n".join(line for line in lines if line is not None)
 
 
 class SummaryBot:
