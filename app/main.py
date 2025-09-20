@@ -118,12 +118,12 @@ async def update_treatment(
     verify_init_data(init_data)
 
     record: Optional[Dict[str, Any]] = None
-    if treatment_id:
-        record = await nightscout.fetch_treatment_by_id(treatment_id)
-    if not record and cid:
+    if cid:
         record = await nightscout.fetch_treatment_by_client_id(cid)
-        if record:
-            treatment_id = record.get("_id") or treatment_id
+    if not record and treatment_id:
+        record = await nightscout.fetch_treatment_by_id(treatment_id)
+    if record:
+        treatment_id = record.get("_id") or treatment_id
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Treatment not found")
 
