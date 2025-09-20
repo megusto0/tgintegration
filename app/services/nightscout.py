@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Any, Dict, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 import httpx
 
 from app.config import get_settings
 
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+MAX_NIGHTSCOUT_FETCH = 5000
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +28,23 @@ def _auth_headers_params() -> Dict[str, Dict[str, str]]:
     return {"headers": headers, "params": params}
 
 
+def _ensure_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _format_ns_datetime(dt: datetime) -> str:
+    return _ensure_utc(dt).isoformat().replace("+00:00", "Z")
+
+
 async def fetch_treatment_by_client_id(client_id: str) -> Optional[Dict[str, Any]]:
     settings = get_settings()
     auth = _auth_headers_params()
     url = f"{settings.ns_url}/api/v1/treatments.json"
     query = {"find[clientId]": client_id, "count": 1, **auth["params"]}
 
-    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, trust_env=False) as client:
         response = await client.get(url, params=query, headers=auth["headers"])
         response.raise_for_status()
         payload = response.json()
@@ -47,13 +59,62 @@ async def fetch_treatment_by_id(treatment_id: str) -> Optional[Dict[str, Any]]:
     url = f"{settings.ns_url}/api/v1/treatments.json"
     query = {"find[_id]": treatment_id, "count": 1, **auth["params"]}
 
-    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, trust_env=False) as client:
         response = await client.get(url, params=query, headers=auth["headers"])
         response.raise_for_status()
         payload = response.json()
         if not payload:
             return None
         return payload[0]
+
+
+async def fetch_treatments_between(
+    start: datetime,
+    end: datetime,
+    *,
+    page_size: int = 1000,
+) -> List[Dict[str, Any]]:
+    if page_size <= 0:
+        raise ValueError("page_size must be positive")
+
+    settings = get_settings()
+    auth = _auth_headers_params()
+    url = f"{settings.ns_url}/api/v1/treatments.json"
+    params_base = {
+        **auth["params"],
+        "find[created_at][$gte]": _format_ns_datetime(start),
+        "find[created_at][$lt]": _format_ns_datetime(end),
+        "count": page_size,
+    }
+
+    results: List[Dict[str, Any]] = []
+    skip = 0
+
+    async with httpx.AsyncClient(timeout=TIMEOUT, trust_env=False) as client:
+        while True:
+            params = {**params_base, "skip": skip}
+            response = await client.get(url, params=params, headers=auth["headers"])
+            response.raise_for_status()
+            chunk = response.json()
+            if not isinstance(chunk, list):
+                logger.error("Unexpected Nightscout response type: %s", type(chunk))
+                break
+            if not chunk:
+                break
+            results.extend(chunk)
+            if len(chunk) < page_size:
+                break
+            skip += len(chunk)
+            if skip >= MAX_NIGHTSCOUT_FETCH:
+                logger.warning(
+                    "Nightscout results truncated at %s records for range %s - %s",
+                    skip,
+                    start,
+                    end,
+                )
+                break
+
+    return results
 
 
 async def update_treatment(
@@ -65,7 +126,7 @@ async def update_treatment(
     auth = _auth_headers_params()
     url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}"
 
-    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, trust_env=False) as client:
         response = await client.put(url, json=patch, params=auth["params"], headers=auth["headers"])
         try:
             response.raise_for_status()
