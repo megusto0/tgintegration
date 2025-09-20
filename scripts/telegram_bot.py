@@ -148,7 +148,17 @@ def _day_bounds(target_date: date) -> tuple[datetime, datetime]:
 
 async def build_day_summary(target_date: date) -> str:
     start, end = _day_bounds(target_date)
-    treatments = await fetch_treatments_between(start, end, page_size=500)
+    treatments = await fetch_treatments_between(start, end, page_size=200)
+    if not treatments:
+        week_start = target_date - timedelta(days=target_date.weekday())
+        fallback_start = datetime.combine(week_start, time.min, tzinfo=UTC)
+        fallback_end = fallback_start + timedelta(days=7)
+        fallback_records = await fetch_treatments_between(fallback_start, fallback_end, page_size=500)
+        treatments = [
+            record
+            for record in fallback_records
+            if _record_local_date(record) == target_date
+        ]
     totals = _aggregate_treatments(treatments)
     day_data = totals["daily"].get(target_date)
 
