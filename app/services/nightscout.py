@@ -70,13 +70,13 @@ async def update_treatment(
             if exc.response.status_code != 404 or existing is None:
                 raise
 
-            fallback_url = f"{settings.ns_url}/api/v1/treatments.json"
+            fallback_url = f"{settings.ns_url}/api/v1/treatments"
             fallback_document = existing.copy()
             fallback_document.update(patch)
             fallback_document["_id"] = treatment_id
             fallback_payload = [fallback_document]
 
-            fallback_response = await client.put(
+            fallback_response = await client.post(
                 fallback_url,
                 json=fallback_payload,
                 headers=auth["headers"],
