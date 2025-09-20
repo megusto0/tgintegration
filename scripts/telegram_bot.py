@@ -147,7 +147,7 @@ def _day_bounds(target_date: date) -> tuple[datetime, datetime]:
 
 async def build_day_summary(target_date: date) -> str:
     start, end = _day_bounds(target_date)
-    treatments = await fetch_treatments_between(start, end)
+    treatments = await fetch_treatments_between(start, end, page_size=500)
     totals = _aggregate_treatments(treatments)
     day_data = totals["daily"].get(target_date)
 
@@ -173,7 +173,7 @@ async def build_week_summary(reference_date: Optional[date] = None) -> str:
     start_dt = datetime.combine(week_start, time.min, tzinfo=UTC)
     end_dt = datetime.combine(week_end, time.min, tzinfo=UTC)
 
-    treatments = await fetch_treatments_between(start_dt, end_dt)
+    treatments = await fetch_treatments_between(start_dt, end_dt, page_size=1000)
     totals = _aggregate_treatments(treatments)
     daily: Dict[date, Dict[str, Any]] = totals["daily"]
 

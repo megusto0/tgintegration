@@ -93,8 +93,17 @@ async def fetch_treatments_between(
     async with httpx.AsyncClient(timeout=TIMEOUT, trust_env=False) as client:
         while True:
             params = {**params_base, "skip": skip}
-            response = await client.get(url, params=params, headers=auth["headers"])
-            response.raise_for_status()
+            try:
+                response = await client.get(url, params=params, headers=auth["headers"])
+                response.raise_for_status()
+            except httpx.TimeoutException:
+                logger.warning(
+                    "Nightscout timeout for range %s - %s, skipping remaining pages",
+                    start,
+                    end,
+                )
+                break
+
             chunk = response.json()
             if not isinstance(chunk, list):
                 logger.error("Unexpected Nightscout response type: %s", type(chunk))
