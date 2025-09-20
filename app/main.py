@@ -120,9 +120,8 @@ async def update_treatment(
     record = await nightscout.fetch_treatment_by_id(treatment_id)
     if not record and cid:
         record = await nightscout.fetch_treatment_by_client_id(cid)
-        if record and record.get("_id") != treatment_id:
-            # Nightscout returned another record; respect the id from form
-            record = None
+        if record:
+            treatment_id = record.get("_id") or treatment_id
     if not record:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Treatment not found")
 
@@ -173,7 +172,8 @@ async def update_treatment(
     if not patch:
         return JSONResponse({"status": "ok", "updated": False})
 
-    await nightscout.update_treatment(treatment_id, patch)
+    target_id = record.get("_id") or treatment_id
+    await nightscout.update_treatment(target_id, patch)
     return JSONResponse({"status": "ok", "updated": True})
 
 
