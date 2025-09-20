@@ -12,8 +12,13 @@ from app.config import get_settings
 
 
 def _compute_hash(data_check_string: str) -> str:
+    """Compute Telegram WebApp hmac signature.
+
+    According to https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+    the secret key must be HMAC_SHA256("WebAppData", bot_token).
+    """
     settings = get_settings()
-    secret_key = hashlib.sha256(settings.tg_token.encode("utf-8")).digest()
+    secret_key = hmac.new(b"WebAppData", settings.tg_token.encode("utf-8"), hashlib.sha256).digest()
     signature = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256)
     return signature.hexdigest()
 
