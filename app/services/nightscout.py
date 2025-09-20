@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any, Dict, Optional
 
 import httpx
@@ -8,6 +9,8 @@ import httpx
 from app.config import get_settings
 
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+
+logger = logging.getLogger(__name__)
 
 
 def _auth_headers_params() -> Dict[str, Dict[str, str]]:
@@ -67,14 +70,32 @@ async def update_treatment(
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
+            body_preview = (exc.response.text or "").strip()
+            logger.warning(
+                "Nightscout PUT %s failed with %s: %s",
+                treatment_id,
+                exc.response.status_code,
+                body_preview[:300],
+            )
             if exc.response.status_code != 404 or existing is None:
                 raise
 
-            fallback_url = f"{settings.ns_url}/api/v1/treatments"
+            delete_url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}"
+            delete_response = await client.delete(
+                delete_url,
+                headers=auth["headers"],
+                params=auth["params"],
+            )
+            if delete_response.status_code not in {200, 404}:
+                delete_response.raise_for_status()
+
             fallback_document = existing.copy()
             fallback_document.update(patch)
-            fallback_document["_id"] = treatment_id
-            fallback_payload = [fallback_document]
+
+            insert_document = fallback_document.copy()
+            insert_document.pop("_id", None)
+            fallback_url = f"{settings.ns_url}/api/v1/treatments"
+            fallback_payload = [insert_document]
 
             fallback_response = await client.post(
                 fallback_url,
@@ -82,7 +103,31 @@ async def update_treatment(
                 headers=auth["headers"],
                 params=auth["params"],
             )
-            fallback_response.raise_for_status()
+            try:
+                fallback_response.raise_for_status()
+            except httpx.HTTPStatusError as fallback_exc:
+                fallback_body = (fallback_exc.response.text or "").strip()
+                logger.error(
+                    "Nightscout fallback recreate failed for %s with %s: %s",
+                    treatment_id,
+                    fallback_exc.response.status_code,
+                    fallback_body[:300],
+                )
+
+                original_document = existing.copy()
+                original_document.pop("_id", None)
+                try:
+                    restore_response = await client.post(
+                        fallback_url,
+                        json=[original_document],
+                        headers=auth["headers"],
+                        params=auth["params"],
+                    )
+                    restore_response.raise_for_status()
+                except Exception:  # pragma: no cover - best-effort restore
+                    logger.exception("Nightscout restore attempt failed for %s", treatment_id)
+
+                raise
 
             if not fallback_response.content:
                 return {"status": "ok"}
