@@ -53,12 +53,43 @@ async def fetch_treatment_by_id(treatment_id: str) -> Optional[Dict[str, Any]]:
         return payload[0]
 
 
-async def update_treatment(treatment_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
+async def update_treatment(
+    treatment_id: str,
+    patch: Dict[str, Any],
+    existing: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     settings = get_settings()
     auth = _auth_headers_params()
     url = f"{settings.ns_url}/api/v1/treatments/{treatment_id}"
 
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         response = await client.put(url, json=patch, params=auth["params"], headers=auth["headers"])
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 404 or existing is None:
+                raise
+
+            fallback_url = f"{settings.ns_url}/api/v1/treatments.json"
+            fallback_document = existing.copy()
+            fallback_document.update(patch)
+            fallback_document["_id"] = treatment_id
+            fallback_payload = [fallback_document]
+
+            fallback_response = await client.put(
+                fallback_url,
+                json=fallback_payload,
+                headers=auth["headers"],
+                params=auth["params"],
+            )
+            fallback_response.raise_for_status()
+
+            if not fallback_response.content:
+                return {"status": "ok"}
+
+            content_type = fallback_response.headers.get("content-type", "")
+            if "application/json" in content_type:
+                return fallback_response.json()
+            return {"status": fallback_response.text.strip() or "ok"}
+
         return response.json()

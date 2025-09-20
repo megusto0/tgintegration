@@ -175,7 +175,7 @@ async def update_treatment(
         return JSONResponse({"status": "ok", "updated": False})
 
     target_id = record.get("_id") or treatment_id
-    await nightscout.update_treatment(target_id, patch)
+    await nightscout.update_treatment(target_id, patch, existing=record)
     return JSONResponse({"status": "ok", "updated": True})
 
 
