@@ -120,8 +120,8 @@ form.addEventListener("submit", async (event) => {
   }
   const formData = new FormData(form);
   formData.append("initData", initData);
-  if (!formData.get("cid") && currentCid) {
-    formData.append("cid", currentCid);
+  if (currentCid) {
+    formData.set("cid", currentCid);
   }
   try {
     setStatus("Сохраняем...");

@@ -117,7 +117,9 @@ async def update_treatment(
 ) -> Response:
     verify_init_data(init_data)
 
-    record = await nightscout.fetch_treatment_by_id(treatment_id)
+    record: Optional[Dict[str, Any]] = None
+    if treatment_id:
+        record = await nightscout.fetch_treatment_by_id(treatment_id)
     if not record and cid:
         record = await nightscout.fetch_treatment_by_client_id(cid)
         if record:
