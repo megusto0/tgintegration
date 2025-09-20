@@ -1,0 +1,355 @@
+Ты — senior full-stack разработчик. Сгенерируй МИНИМАЛЬНО ЖИЗНЕСПОСОБНЫЙ, но ПОЛНЫЙ проект, который решает задачу:
+
+Цель: когда Яндекс-навык создаёт запись в Nightscout (treatment), пользователю в Telegram приходит сообщение с кнопкой «Редактировать». Кнопка открывает Telegram Mini App (WebApp), где предзаполнена форма значениями записи; пользователь может изменить eventType/insulin/carbs/доп.поля и (опционально) загрузить фото. После «Сохранить» эти данные обновляют соответствующий treatment в Nightscout.
+
+Требования к стеку/структуре:
+1) Бэкенд на Python 3.10+, FastAPI + Uvicorn.
+2) Хранение фото на диске сервера (Ubuntu), раздача фото Nginx по /media/.
+3) Взаимодействие с Nightscout через REST API.
+4) Верификация Telegram WebApp initData по правилам Telegram (HMAC-SHA256 от sha256(bot_token)).
+5) Ограничение по пользователям: ALLOWED_USER_IDS (список user.id), иначе 403.
+6) Проект оформить как репозиторий, выводить код БЛОКАМИ по файлам в формате:
+   --- file: <путь/имя> ---
+   <содержимое>
+   (и так для всех файлов)
+
+Функциональные детали:
+- Переменные окружения (.env):
+  NS_URL, NS_TOKEN (или NS_API_SECRET), TG_TOKEN, ALLOWED_USER_IDS (через запятую), MEDIA_ROOT (напр. /var/www/ns-media), MEDIA_BASE_URL (напр. https://<домен>/media), APP_BASE_URL (напр. https://ns-tools.<домен>), HOST, PORT.
+- Эндпоинты:
+  * GET /api/treatment?cid=<clientId>&initData=<…>
+    - Проверить подпись initData и user.id ∈ ALLOWED_USER_IDS.
+    - Найти treatment по полю clientId: GET {NS_URL}/api/v1/treatments.json?find[clientId]=<cid>&count=1&token=…
+    - Вернуть JSON с полями: id (_id), eventType (или "None"), insulin, carbs, calories_kcal (можно как calories), protein_g (protein), meal, photoUrl, notes (если есть) — безопасно.
+  * PUT /api/treatment (FormData): initData, id, eventType, insulin?, carbs?, calories?, protein?, meal?, photoUrl?
+    - Проверить подпись/пользователя.
+    - PUT {NS_URL}/api/v1/treatments/<id>?token=…  (или с api-secret) с JSON-патчем только изменённых полей.
+  * POST /api/upload (multipart/form-data): initData, image
+    - Проверить подпись/пользователя.
+    - Принять jpg/png, ограничить размер (например, до 5 МБ).
+    - Сохранить как MEDIA_ROOT/YYYY/MM/<uuid>.ext; вернуть {"url": MEDIA_BASE_URL/…}.
+- Старайся не логировать секреты и полные initData; добавь базовый логгер.
+- CORS не нужен для WebApp, но ответов хватит стандартных заголовков.
+
+WebApp (Telegram Mini App):
+- Разместить как статические файлы по /webapp/ (index.html + js).
+- Подключить https://telegram.org/js/telegram-web-app.js, взять initData из Telegram.WebApp.initData.
+- При загрузке: вытащить cid из query-строки, дернуть GET /api/treatment, префилл формы.
+- Поля формы: select eventType (Meal Bolus, Carb Correction, Correction Bolus, None), number insulin (step 0.1), number carbs (step 1), number calories, number protein, text meal; file input photo → POST /api/upload → показать превью.
+- Кнопка «Сохранить»: PUT /api/treatment, при успехе показать “Сохранено” и вызвать Telegram.WebApp.close().
+- Небольшой чистый UI (vanilla HTML/CSS + чуть JS), без фреймворков.
+
+Интеграция с Telegram (для сообщения с кнопкой «Редактировать»):
+- Дай утилиту на Python: send_tg_with_webapp(summary_text, cid), которая шлёт в чат (chat_id из env) сообщение с inline-клавиатурой:
+  {"inline_keyboard":[[{"text":"✏️ Редактировать","web_app":{"url": APP_BASE_URL + "/webapp/?cid="+cid}}]]}
+- Ссылку на эту функцию упомяни в README (вызывается из Яндекс-функции после создания treatment). clientId генерируется на этапе создания записи (uuid), кладётся в поле treatment.clientId и дублируется в notes JSON.
+
+Файлы, которые нужно вывести:
+- app/main.py  (FastAPI, все эндпоинты, проверка initData, работа с Nightscout, загрузка файлов)
+- app/ns.py    (утилиты GET/PUT для Nightscout, работа с токеном/api-secret)
+- app/tg.py    (verify_init_data(initData), send_tg_with_webapp)
+- app/config.py (pydantic Settings для env, валидация значений)
+- static/webapp/index.html  (форма + логика)
+- static/webapp/app.js      (если выносишь JS отдельно)
+- static/webapp/style.css   (минимальный стиль)
+- .env.sample               (шаблон переменных)
+- requirements.txt          (fastapi, uvicorn, python-multipart, requests, pydantic-settings)
+- run.sh                    (запуск uvicorn, чтение .env)
+- nginx/example.conf        (server { … } локации: /webapp/ (статик), /api/ (proxy_pass), /media/ (статик); gzip; TLS не расписывай подробно)
+- README.md                 (инструкции по установке на Ubuntu: python venv, pip install -r, запуск uvicorn/systemd, настройка Nginx, где лежат фото, как получить cid, как отправить сообщение с кнопкой, примеры curl для GET/PUT/upload)
+- tests/test_verify.py      (юнит-тест проверки подписи initData на фиктивных данных; можно использовать pytest)
+- OPTIONAL: Dockerfile + docker-compose.yml (по желанию, если не громоздко)
+
+Общие требования к коду:
+- Аннотации типов, чёткие ошибки (HTTPException с сообщениями), таймауты запросов к Nightscout/Telegram.
+- Не логируй секреты и initData целиком (только user.id и поля безопасно).
+- Аккуратные статусы: 401 при невалидной подписи, 403 при чужом user.id, 404 если treatment не найден.
+- В PUT валидируй и нормализуй числа (insulin до 1 знака, carbs и calories до int).
+- Во всех примерах используй env-переменные, а не хардкоды.
+
+Выводи ВСЕ файлы по шаблону `--- file: … ---`. Код должен быть самодостаточным (после заполнения .env и настройки Nginx проект можно запустить командой из README).
+
+Код текущей реализации навыка яндекс станцииЮ который добовляет записи import os
+import re
+import json
+import hashlib
+import requests
+from datetime import datetime, timezone
+from typing import Optional, Tuple, Any, Dict
+
+# пока хардкоды; позже лучше в env
+NS_URL = os.getenv("NS_URL", "http://megusto.duckdns.org:1337").rstrip("/")
+NS_TOKEN = os.getenv("NS_TOKEN", "libre-3dfef8d0f89b435e")  # если есть "token" в Nightscout
+NS_API_SECRET = os.getenv("NS_API_SECRET")                  # если используешь api-secret
+TIMEOUT_SEC = int(os.getenv("NS_TIMEOUT", "10"))
+
+# лимиты (notes у нас теперь только JSON-строка, но оставим клампер на всякий случай)
+NS_NOTES_MAX = int(os.getenv("NS_NOTES_MAX", "4000"))
+SESSION_STATE_MAX = int(os.getenv("SESSION_STATE_MAX", "3500"))
+
+# ---------- утилиты ----------
+RE_INS = re.compile(r"(?:инсул\w*|болюс\w*)[^\d]*(\d+[.,]?\d*)", re.I)
+RE_CAR = re.compile(r"(?:углев\w*|угли|угл|хе)\w*[^\d]*(\d+[.,]?\d*)", re.I)
+RE_KCAL = re.compile(r"(?:ккал\w*|калор\w*|\bкал(?![а-я])\b)[^\d]*(\d+[.,]?\d*)", re.I)
+RE_PRO  = re.compile(r"(?:белк\w*|протеин\w*)[^\d]*(\d+[.,]?\d*)", re.I)
+
+# фразы для извлечения блюда/названия еды (ищем в конце реплики)
+RE_MEAL_VERB = re.compile(r"\b(?:ел|ела|ели|съел|съела|съели)\b\s+(.+)$", re.I)
+RE_MEAL_TIME = re.compile(r"\bна\s+(?:завтрак|обед|ужин|перекус)\b\s+(.+)$", re.I)
+RE_MEAL_THIS = re.compile(r"\b(?:это|было|были|была)\b\s+(.+)$", re.I)
+
+def _num(s: str) -> float:
+    return float(s.replace(",", "."))
+
+def pick_text(event: Any) -> Tuple[str, Optional[dict]]:
+    """Извлечь текст из вебхука (Yandex Dialogs / proxy) или из прямого JSON, а также вернуть исходный dict."""
+    raw = event.get("body") if isinstance(event, dict) else event
+    data = None
+    if isinstance(raw, (dict, list)):
+        data = raw
+    elif isinstance(raw, (str, bytes)):
+        s = raw.decode("utf-8", "ignore") if isinstance(raw, (bytes, bytearray)) else raw
+        try:
+            data = json.loads(s)
+        except Exception:
+            data = None
+    elif isinstance(event, dict):
+        data = event
+
+    text = ""
+    if isinstance(data, dict):
+        req = data.get("request") or {}
+        text = (
+            req.get("original_utterance")
+            or req.get("command")
+            or data.get("text")
+            or data.get("utterance")
+            or ""
+        )
+        if isinstance(text, str):
+            text = text.strip()
+    elif isinstance(raw, str) and raw.strip():
+        text = raw.strip()
+
+    return text or "", data
+
+def extract(text: str) -> Tuple[Optional[float], Optional[float]]:
+    ins = RE_INS.search(text or "")
+    car = RE_CAR.search(text or "")
+    insulin = _num(ins.group(1)) if ins else None
+    carbs   = _num(car.group(1)) if car else None
+    return insulin, carbs
+
+def extract_more(text: str) -> Tuple[Optional[float], Optional[float]]:
+    kcal = RE_KCAL.search(text or "")
+    prot = RE_PRO.search(text or "")
+    calories = _num(kcal.group(1)) if kcal else None
+    protein  = _num(prot.group(1)) if prot else None
+    return calories, protein
+
+def _clean_meal(s: str) -> str:
+    s = s.strip().strip(" .,!?:;—-\"'()[]{}")
+    return re.sub(r"\s+", " ", s)
+
+def extract_meal(text: str) -> Optional[str]:
+    for rx in (RE_MEAL_VERB, RE_MEAL_TIME, RE_MEAL_THIS):
+        m = rx.search(text or "")
+        if m:
+            meal = _clean_meal(m.group(1))
+            if re.search(r"[A-Za-zА-Яа-яЁё]", meal):
+                return meal
+    return None
+
+def extract_meal_fallback(text: str) -> Optional[str]:
+    """Если явных триггеров нет, пробуем взять хвостовую фразу как блюдо."""
+    left = text or ""
+    # вырезаем распознанные пары "метка+число"
+    for rx in (RE_INS, RE_CAR, RE_KCAL, RE_PRO):
+        left = rx.sub(" ", left)
+    # убираем числа и единицы измерения
+    left = re.sub(r"[0-9]+[.,]?[0-9]*", " ", left)
+    left = re.sub(r"\b(ед|г|ккал)\b", " ", left, flags=re.I)
+    # убираем служебные/частые слова
+    left = re.sub(r"\b(записать|пожалуйста|и|а|ну|да|ещё|еще|калории|белки|углеводы|инсулин)\b",
+                  " ", left, flags=re.I)
+    left = _clean_meal(left)
+    # если остался понятный текст с буквами — считаем это названием блюда
+    return left if re.search(r"[A-Za-zА-Яа-яЁё]", left) else None
+
+def is_http_event(event: Any) -> bool:
+    return isinstance(event, dict) and (
+        "httpMethod" in event or "headers" in event or "multiValueHeaders" in event or "requestContext" in event
+        or isinstance(event.get("body", None), (str, bytes))
+    )
+
+def reply(text: str, end: bool, http_mode: bool, session_state: Optional[dict] = None):
+    payload = {"version": "1.0", "response": {"text": text, "end_session": end}}
+    if session_state is not None:
+        payload["session_state"] = session_state
+    if http_mode:
+        return {"statusCode": 200, "headers": {"Content-Type": "application/json"}, "body": json.dumps(payload, ensure_ascii=False)}
+    return payload
+
+def ns_headers_params():
+    headers = {"Content-Type": "application/json"}
+    params = {}
+    if NS_TOKEN:
+        params["token"] = NS_TOKEN
+    if NS_API_SECRET:
+        headers["api-secret"] = hashlib.sha1(NS_API_SECRET.encode("utf-8")).hexdigest()
+    if not NS_TOKEN and not NS_API_SECRET:
+        raise RuntimeError("Нужен NS_TOKEN или NS_API_SECRET для Nightscout")
+    return headers, params
+
+def choose_event_type(insulin: Optional[float], carbs: Optional[float]) -> Optional[str]:
+    ins_ok = insulin is not None and insulin > 0
+    car_ok = carbs   is not None and carbs   > 0
+    if ins_ok and car_ok:
+        return "Meal Bolus"          # или "Bolus Wizard"
+    if car_ok:
+        return "Carb Correction"     # или "Meal"
+    if ins_ok:
+        return "Correction Bolus"
+    return None
+
+def round_insulin(x: Optional[float]) -> Optional[float]:
+    return None if x is None else round(float(x), 1)
+
+def round_carbs(x: Optional[float]) -> Optional[float]:
+    return None if x is None else round(float(x), 0)
+
+def _append_line(transcript: str, who: str, text: str) -> str:
+    line = f"{who}: {text}".strip()
+    return (transcript + "\n" + line) if transcript else line
+
+def _clamp(s: str, limit: int) -> str:
+    if limit <= 0:
+        return ""
+    return s if len(s) <= limit else s[-limit:]
+
+# ---------- основной обработчик ----------
+def handler(event: Any, context: Any = None):
+    http_mode = is_http_event(event)
+    try:
+        text, data = pick_text(event)
+
+        # сессия/история (для продолжения диалога; в notes не пишем)
+        prev_transcript = ""
+        if isinstance(data, dict):
+            prev_transcript = ((data.get("state", {}) or {}).get("session", {}) or {}).get("transcript", "")
+        transcript = _append_line(prev_transcript, "Пользователь", text)
+
+        insulin, carbs = extract(text)
+        calories, protein = extract_more(text)
+        meal = extract_meal(text)
+        if not meal:
+            meal = extract_meal_fallback(text)
+
+        # подсказка при пустом вводе
+        if insulin is None and carbs is None and calories is None and protein is None and meal is None:
+            bot = "Скажите, например: «инсулин 4, углеводы 30». Можно добавить калории, белки и блюдо: «калории 500, белки 30, ел гречку с курицей»."
+            transcript_final = _append_line(transcript, "Алиса", bot)
+            session_state = {"transcript": _clamp(transcript_final, SESSION_STATE_MAX)}
+            return reply(bot, False, http_mode, session_state)
+
+        # валидация основных полей
+        if insulin is not None and not (0 <= insulin <= 50):
+            bot = "Неверное значение инсулина. Назовите число от 0 до 50."
+            transcript_final = _append_line(transcript, "Алиса", bot)
+            session_state = {"transcript": _clamp(transcript_final, SESSION_STATE_MAX)}
+            return reply(bot, True, http_mode, session_state)
+        if carbs is not None and not (0 <= carbs <= 1000):
+            bot = "Неверное количество углеводов. Назовите число от 0 до 1000."
+            transcript_final = _append_line(transcript, "Алиса", bot)
+            session_state = {"transcript": _clamp(transcript_final, SESSION_STATE_MAX)}
+            return reply(bot, True, http_mode, session_state)
+
+        insulin = round_insulin(insulin)
+        carbs   = round_carbs(carbs)
+        cal_int = int(round(calories)) if isinstance(calories, (int, float)) else None
+        pro_int = int(round(protein))  if isinstance(protein,  (int, float)) else None
+
+        event_type = choose_event_type(insulin, carbs)
+        if not event_type:
+            bot = "Нужно назвать инсулин и/или углеводы больше нуля. Остальные параметры можно добавить дополнительно."
+            transcript_final = _append_line(transcript, "Алиса", bot)
+            session_state = {"transcript": _clamp(transcript_final, SESSION_STATE_MAX)}
+            return reply(bot, False, http_mode, session_state)
+
+        # текст, который озвучит Алиса
+        parts = []
+        if insulin: parts.append(f"инсулин {insulin:g} ед")
+        if carbs:   parts.append(f"углеводы {int(carbs)} г")
+        if cal_int is not None: parts.append(f"калории {cal_int} ккал")
+        if pro_int is not None: parts.append(f"белки {pro_int} г")
+        if meal: parts.append(f"блюдо: {meal}")
+        bot = "Записала: " + ", ".join(parts) + "."
+
+        # итоговый транскрипт — только в session_state
+        transcript_final = _append_line(transcript, "Алиса", bot)
+
+        # JSON-шапка для Nightscout (notes) — без транскрипта
+        created_at_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        meta: Dict[str, Any] = {"ver": 3, "source": "Alice skill", "created_at": created_at_str}
+        if insulin is not None: meta["insulin_u"] = insulin
+        if carbs   is not None: meta["carbs_g"]   = int(carbs)
+        if cal_int is not None: meta["calories_kcal"] = cal_int
+        if pro_int is not None: meta["protein_g"]     = pro_int
+        if meal: meta["meal"] = meal
+        meta["utterance"] = text
+
+        notes_head  = "[alice-meta]" + json.dumps(meta, ensure_ascii=False, separators=(',', ':'))
+        notes_value = _clamp(notes_head, NS_NOTES_MAX)  # только JSON
+
+        payload: Dict[str, Any] = {
+            "eventType": event_type,
+            "created_at": created_at_str,
+            "enteredBy": "Alice skill",
+            "notes": notes_value,
+        }
+        if insulin: payload["insulin"] = insulin
+        if carbs:   payload["carbs"]   = carbs
+
+        headers, params = ns_headers_params()
+        try:
+            r = requests.post(
+                f"{NS_URL}/api/v1/treatments",
+                params=params, headers=headers, json=[payload], timeout=TIMEOUT_SEC
+            )
+        except Exception as e:
+            bot = f"Не удалось связаться с Nightscout: {e}"
+            session_state = {"transcript": _clamp(transcript_final, SESSION_STATE_MAX)}
+            return reply(bot, True, http_mode, session_state)
+
+        session_state = {"transcript": _clamp(transcript_final, SESSION_STATE_MAX)}
+        if r.ok:
+            return reply(bot, True, http_mode, session_state)
+        else:
+            err = f"Nightscout ответил {r.status_code}: {r.text[:180]}"
+            session_state["transcript"] = _clamp(_append_line(transcript_final, "Алиса", err), SESSION_STATE_MAX)
+            return reply(err, True, http_mode, session_state)
+
+    except Exception as e:
+        bot = f"Ошибка: {e}"
+        try:
+            _, data = pick_text(event)
+            prev_transcript = ((data.get("state", {}) or {}).get("session", {}) or {}).get("transcript", "") if isinstance(data, dict) else ""
+        except Exception:
+            prev_transcript = ""
+        session_state = {"transcript": _clamp(_append_line(prev_transcript, "Алиса", bot), SESSION_STATE_MAX)}
+        return reply(bot, True, http_mode, session_state)
+
+# ---------- CLI режим ----------
+if __name__ == "__main__":
+    import sys
+    if sys.stdin.isatty() and len(sys.argv) > 1:
+        text = " ".join(sys.argv[1:])
+        print(handler({"text": text}))
+    else:
+        raw = sys.stdin.read()
+        try:
+            evt = json.loads(raw) if raw.strip() else {}
+        except Exception:
+            evt = {"text": raw}
+        resp = handler(evt)
+        print(json.dumps(resp, ensure_ascii=False))

@@ -1,0 +1,17 @@
+[Unit]
+Description=Nightscout Telegram WebApp
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/megusto/codex/tgintegration
+EnvironmentFile=/home/megusto/codex/tgintegration/.env
+ExecStart=/home/megusto/codex/tgintegration/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8080
+Restart=on-failure
+RestartSec=5
+User=www-data
+Group=www-data
+Environment="PYTHONPATH=/home/megusto/codex/tgintegration"
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,150 @@
+[
+  {
+    "_id": "68cdd055795633ee9ee383c0",
+    "eventType": "Carb Correction",
+    "created_at": "2025-09-19T21:51:17.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T21:51:17Z\",\"carbs_g\":20,\"calories_kcal\":120,\"utterance\":\"калории 120 углеводы 20\"}",
+    "carbs": 20,
+    "utcOffset": 0,
+    "insulin": null
+  },
+  {
+    "_id": "68cdb0b4795633ee9ee3748f",
+    "eventType": "Meal Bolus",
+    "created_at": "2025-09-19T19:36:20.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T19:36:20Z\",\"insulin_u\":3.0,\"carbs_g\":37,\"calories_kcal\":339,\"meal\":\"добавить\",\"utterance\":\"добавить инсулин 3 калории 339 углеводы 37\"}",
+    "insulin": 3,
+    "carbs": 37,
+    "utcOffset": 0
+  },
+  {
+    "_id": "68cda9ee795633ee9ee37143",
+    "eventType": "Meal Bolus",
+    "created_at": "2025-09-19T19:07:26.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T19:07:26Z\",\"insulin_u\":2.4,\"carbs_g\":24,\"calories_kcal\":140,\"meal\":\"добавить\",\"utterance\":\"добавить углеводы 24 инсулин 2.4 калории 140\"}",
+    "insulin": 2.4,
+    "carbs": 24,
+    "utcOffset": 0
+  },
+  {
+    "_id": "68cd833d795633ee9ee35ed1",
+    "eventType": "",
+    "carbs": 76,
+    "insulin": 6,
+    "created_at": "2025-09-19T16:22:20.452Z",
+    "utcOffset": 0
+  },
+  {
+    "_id": "68cd4ce6795633ee9ee34618",
+    "eventType": "Correction Bolus",
+    "created_at": "2025-09-19T12:30:29.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T12:30:29Z\",\"insulin_u\":2.0,\"utterance\":\"инсулин 2\"}",
+    "insulin": 2,
+    "utcOffset": 0,
+    "carbs": null
+  },
+  {
+    "_id": "68cd38a3795633ee9ee33c91",
+    "eventType": "Correction Bolus",
+    "created_at": "2025-09-19T11:04:03.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T11:04:03Z\",\"insulin_u\":1.0,\"utterance\":\"инсулин 1\"}",
+    "insulin": 1,
+    "utcOffset": 0,
+    "carbs": null
+  },
+  {
+    "_id": "68cd3885795633ee9ee33c79",
+    "eventType": "Carb Correction",
+    "created_at": "2025-09-19T11:03:33.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T11:03:33Z\",\"carbs_g\":13,\"calories_kcal\":140,\"meal\":\"добавить\",\"utterance\":\"добавить углеводы 13 калории 140\"}",
+    "carbs": 13,
+    "utcOffset": 0,
+    "insulin": null
+  },
+  {
+    "_id": "68cd29a8795633ee9ee33559",
+    "eventType": "Carb Correction",
+    "created_at": "2025-09-19T10:00:08.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T10:00:08Z\",\"carbs_g\":13,\"utterance\":\"углеводы 13\"}",
+    "carbs": 13,
+    "utcOffset": 0,
+    "insulin": null
+  },
+  {
+    "_id": "68cd0d29795633ee9ee327bd",
+    "eventType": "Correction Bolus",
+    "created_at": "2025-09-19T07:58:33.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T07:58:33Z\",\"insulin_u\":0.8,\"meal\":\"добавить\",\"utterance\":\"добавить инсулин 0.8\"}",
+    "insulin": 0.8,
+    "utcOffset": 0,
+    "carbs": null
+  },
+  {
+    "_id": "68cd0980795633ee9ee325f7",
+    "eventType": "Carb Correction",
+    "created_at": "2025-09-19T07:42:54.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T07:42:54Z\",\"carbs_g\":9,\"calories_kcal\":400,\"meal\":\"добавить яйца\",\"utterance\":\"добавить углеводы 9 калории 400 яйца\"}",
+    "carbs": 9,
+    "utcOffset": 0,
+    "insulin": null
+  },
+  {
+    "_id": "68cd0429795633ee9ee3236a",
+    "eventType": "Carb Correction",
+    "created_at": "2025-09-19T07:20:09.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T07:20:09Z\",\"carbs_g\":15,\"calories_kcal\":8,\"meal\":\"добавить\",\"utterance\":\"добавить углеводы 15 калорий 8\"}",
+    "carbs": 15,
+    "utcOffset": 0,
+    "insulin": null
+  },
+  {
+    "_id": "68ccefaf795633ee9ee3199a",
+    "eventType": "Correction Bolus",
+    "created_at": "2025-09-19T05:52:47.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T05:52:47Z\",\"insulin_u\":1.2,\"meal\":\"добавить\",\"utterance\":\"добавить инсулин 1.2\"}",
+    "insulin": 1.2,
+    "utcOffset": 0,
+    "carbs": null
+  },
+  {
+    "_id": "68cce1ca795633ee9ee312e4",
+    "eventType": "Meal Bolus",
+    "created_at": "2025-09-19T04:53:30.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T04:53:30Z\",\"insulin_u\":3.2,\"carbs_g\":32,\"calories_kcal\":210,\"meal\":\"добавить печенье\",\"utterance\":\"добавить углеводы 32 инсулин 3.2 калории 210 печенье\"}",
+    "insulin": 3.2,
+    "carbs": 32,
+    "utcOffset": 0
+  },
+  {
+    "_id": "68ccd78d795633ee9ee30dde",
+    "eventType": "Correction Bolus",
+    "created_at": "2025-09-19T04:09:49.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T04:09:49Z\",\"insulin_u\":1.2,\"meal\":\"добавить\",\"utterance\":\"добавить инсулин 1.2\"}",
+    "insulin": 1.2,
+    "utcOffset": 0,
+    "carbs": null
+  },
+  {
+    "_id": "68cccb24795633ee9ee307dc",
+    "eventType": "Carb Correction",
+    "created_at": "2025-09-19T03:16:51.000Z",
+    "enteredBy": "Alice skill",
+    "notes": "[alice-meta]{\"ver\":3,\"source\":\"Alice skill\",\"created_at\":\"2025-09-19T03:16:51Z\",\"carbs_g\":14,\"calories_kcal\":80,\"meal\":\"добавить\",\"utterance\":\"добавить углеводы 14 калории 80\"}",
+    "carbs": 14,
+    "utcOffset": 0,
+    "insulin": null
+  }
+]
